@@ -1,0 +1,19 @@
+{
+  "name": "backend-chai-aur-code",
+  "version": "1.0.0",
+  "description": "a backend project -youtube",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codeWith-Repon/professional-backend-.git"
+  },
+  "author": "Repon",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/codeWith-Repon/professional-backend-/issues"
+  },
+  "homepage": "https://github.com/codeWith-Repon/professional-backend-#readme"
+}
