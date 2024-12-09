@@ -11,9 +11,10 @@ const generateAccessAndRefereshTokens = async (userId) => {
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
 
-    // inject refresh token in uer
+    // inject refresh token in uer(save in database)
     user.refreshToken = refreshToken;
     // { validateBeforeSave: false } use.. becuase when user data save .. then before it check in Usermodel and when save data then it's need username or email and password.... when use this line then it save data untill comming username or email and password
+    // https://youtu.be/7DVpag3cO0g?list=PLu71SKxNbfoBGh_8p_NS-ZAh6v7HhYqHW&t=1346
     await user.save({ validateBeforeSave: false });
 
     return { accessToken, refreshToken };
@@ -172,8 +173,32 @@ const loginUser = asyncHandler(async (req, res) => {
     );
 });
 
-const logoutUser = asyncHandler(async (req, res)=> {
-  
-})
+const logoutUser = asyncHandler(async (req, res) => {
+  // delete refresh token
+  // clear cookie
 
-export { registerUser, loginUser };
+  await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        refreshToken: undefined,
+      },
+    },
+    {
+      new: true,
+    }
+  );
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponse(200, {}, "User logged Out"));
+});
+
+export { registerUser, loginUser, logoutUser };
