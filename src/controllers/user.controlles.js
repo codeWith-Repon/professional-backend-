@@ -1,7 +1,10 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import {
+  deleteFromCloudinary,
+  uploadOnCloudinary,
+} from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 
@@ -318,14 +321,42 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
   }
 
   //todo: delete old image - assignment
+  //solve::::
+  // Step 1: Get the current user's avatar (if any)
+  const user = await User.findById(req.user?._id);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
 
+  const currentAvatarUrl = user.avatar;
+  let publicIdToDelete = null;
+
+  // Step 2: Extract public ID from the current avatar URL if it exists
+  if (currentAvatarUrl) {
+    const urlParts = currentAvatarUrl.split('/');
+    const fileName = urlParts[urlParts.length - 1]; // Get the last part of the URL
+    const publicIdWithExtension = fileName.split('.')[0]; // Remove the file extension
+    publicIdToDelete = publicIdWithExtension;
+  }
+  
+
+  // Step 3: Delete the old avatar from Cloudinary if it exists
+  if (publicIdToDelete) {
+    const deleteResult = await deleteFromCloudinary(publicIdToDelete);
+    if (!deleteResult || deleteResult.result !== "ok") {
+      console.error("Failed to delete the old image from Cloudinary.");
+    }
+  }
+
+  // Step 4: Upload the new avatar
   const avatar = await uploadOnCloudinary(avatarLocalPath);
 
   if (!avatar.url) {
-    throw new ApiError(400, "Error while uploading on avatar");
+    throw new ApiError(400, "Error while uploading avatar");
   }
 
-  const user = await User.findByIdAndUpdate(
+  // Step 5: Update the user's avatar in the database
+  const updatedUser = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
@@ -337,7 +368,9 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, user, "Avatar image updated successfully"));
+    .json(
+      new ApiResponse(200, updatedUser, "Avatar image updated successfully")
+    );
 });
 
 const updateUserCoverImage = asyncHandler(async (req, res) => {
