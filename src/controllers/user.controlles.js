@@ -333,12 +333,11 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 
   // Step 2: Extract public ID from the current avatar URL if it exists
   if (currentAvatarUrl) {
-    const urlParts = currentAvatarUrl.split('/');
+    const urlParts = currentAvatarUrl.split("/");
     const fileName = urlParts[urlParts.length - 1]; // Get the last part of the URL
-    const publicIdWithExtension = fileName.split('.')[0]; // Remove the file extension
+    const publicIdWithExtension = fileName.split(".")[0]; // Remove the file extension
     publicIdToDelete = publicIdWithExtension;
   }
-  
 
   // Step 3: Delete the old avatar from Cloudinary if it exists
   if (publicIdToDelete) {
@@ -401,6 +400,79 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, "Cover image updated successfully"));
 });
 
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+
+  if (!username?.trim()) {
+    throw new ApiError(400, "username is missing");
+  }
+
+  const channel = await User.aggregate([
+    {
+      $match: {
+        username: username?.toLowerCase(),
+      },
+    },
+    {
+      $lookup: {
+        from: "subscriptions", ///(Subscription) model e sobkisu lowercase ebong plural e convert hoy
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers",
+      },
+    },
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "subscribedTo", ///kake kake subscribe korci
+      },
+    },
+    {
+      $addFields: {
+        subscribersCount: {
+          $size: "$subscribers",
+        },
+        channelsSubscribedToCount: {
+          $size: "$subscribedTo",
+        },
+        isSubscribed: {
+          $cond: {
+            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        fullName: 1,
+        username: 1,
+        subscribersCount: 1,
+        channelsSubscribedToCount: 1,
+        isSubscribed: 1,
+        avatar: 1,
+        coverImage: 1,
+        email: 1,
+      },
+    },
+  ]);
+
+  console.log("===================>>", channel)
+
+  if (!channel?.length) {
+    throw new ApiError(404, "channel does not exists");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, channel[0], "User channel fetched successfully")
+    );
+});
+
 export {
   registerUser,
   loginUser,
@@ -411,4 +483,5 @@ export {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
+  getUserChannelProfile,
 };
